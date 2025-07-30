@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Professor Zulin</title>
+<style>
+    html, body {
+        margin: 0; padding: 0;
+        width: 100vw; height: 100vh; overflow: hidden;
+        background: #e9ecef;
+    }
+    #container {
+        width: 100vw; height: 100vh;
+        display: flex; flex-direction: row;
+    }
+    #sidebar {
+        width: 340px; min-width: 210px; max-width: 380px;
+        background: #fff; border-right: 2px solid #1976d2;
+        box-shadow: 2px 0 18px #0001;
+        padding: 12px 8px 16px 10px;
+        display: flex; flex-direction: column;
+        gap: 14px; z-index: 2;
+        transition: width 0.25s, min-width 0.25s;
+        position: relative;
+    }
+    #sidebar.hide {
+        width: 34px; min-width: 34px; overflow-x: hidden;
+        padding-left: 0; padding-right: 0;
+    }
+    #sidebar.hide *:not(#toggleBar) { display: none; }
+    #toggleBar {
+        position: absolute; right: -19px; top: 12px;
+        width: 32px; height: 44px; background: #1976d2;
+        color: #fff; border-radius: 0 20px 20px 0;
+        font-size: 20px; border: none; cursor: pointer;
+        box-shadow: 1px 0 5px #0002; z-index: 4;
+        display: flex; align-items: center; justify-content: center;
+        transition: background 0.2s;
+    }
+    #toggleBar:hover { background: #135ba1; }
+    #board {
+        flex: 1 1 auto; align-self: stretch;
+        display: block;
+        margin: 0; background: #fafafa;
+        border: 2.5px solid #1976d2;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px #0002;
+        cursor: crosshair;
+        touch-action: none;
+        transition: border-radius 0.2s;
+        /* redimensionado no JS */
+    }
+    .controls, .tools, .quick-colors {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    .controls label, .tools label, .quick-colors label { font-size: 14px; }
+    button, input[type="color"], input[type="range"], select, input[type="file"] {
+        border-radius: 8px; border: none; padding: 6px 12px;
+        font-size: 15px; cursor: pointer; outline: none;
+    }
+    button { background: #1976d2; color: #fff; transition: background 0.2s; }
+    button:hover, .quick-color:hover { background: #135ba1; }
+    .tools button.selected, .quick-color.selected { background: #17a700; color: #fff; }
+    .quick-colors .quick-color {
+        width: 28px; height: 28px; border-radius: 50%;
+        border: 2px solid #bbb;
+        display: inline-block;
+        margin: 0 3px; padding: 0; background: #eee;
+    }
+    .quick-color[data-color="#1976d2"] { background: #1976d2; }
+    .quick-color[data-color="#d32f2f"] { background: #d32f2f; }
+    .quick-color[data-color="#fbc02d"] { background: #fbc02d; }
+    .quick-color[data-color="#212121"] { background: #212121; }
+    .quick-color[data-color="#ff9800"] { background: #ff9800; }
+    .quick-color[data-color="#43a047"] { background: #43a047; }
+    #importFile { display: none; }
+    h2 {
+        margin: 8px 0 0 0; color: #1976d2; font-size: 1.13em;
+        letter-spacing: 1.1px; user-select: none; text-align: center;
+    }
+    @media (max-width: 700px) {
+        #sidebar { min-width: 34px; width: 34px; }
+        #sidebar *:not(#toggleBar) { display: none; }
+    }
+</style>
+</head>
+<body>
+<div id="container">
+    <div id="sidebar">
+        <button id="toggleBar" title="Mostrar/Esconder Barra" onclick="toggleSidebar()">&larr;</button>
+        <h2>Quadro Branco<br>Professor Zulin</h2>
+        <div class="controls">
+            <label for="color">Cor:</label>
+            <input type="color" id="color" value="#006c4c">
+            <div class="quick-colors">
+                <label>:</label>
+                <button class="quick-color" data-color="#1976d2" title="Azul"></button>
+                <button class="quick-color" data-color="#d32f2f" title="Vermelho"></button>
+                <button class="quick-color" data-color="#fbc02d" title="Amarelo"></button>
+                <button class="quick-color" data-color="#212121" title="Preto"></button>
+                <button class="quick-color" data-color="#ff9800" title="Laranja"></button>
+                <button class="quick-color" data-color="#43a047" title="Verde"></button>
+            </div>
+            <label for="size">Espessura:</label>
+            <input type="range" id="size" min="2" max="24" value="4">
+        </div>
+        <div class="controls">
+            <label for="grid">Grade:</label>
+            <input type="checkbox" id="grid">
+            <label for="cartesian">Plano Cartesiano:</label>
+            <input type="checkbox" id="cartesian">
+        </div>
+
+
+        <div class="tools" id="mainTools">
+    <label>Ferramenta:</label>
+    <button id="penTool" onclick="selectTool('pen')" class="selected" title="Caneta">
+      <svg width="28" height="28" viewBox="0 0 48 48"><path d="M10,38 L14,42 L38,18 L34,14 Z" fill="#e0e0e0"/><rect x="32" y="12" width="8" height="8" rx="2" fill="none" stroke="#1976d2" stroke-width="2"/><path d="M10,38 L34,14" stroke="#1976d2" stroke-width="4" /></svg>
+    </button>
+    <button id="eraserTool" onclick="selectTool('eraser')" title="Borracha">
+      <svg width="28" height="28" viewBox="0 0 48 48"><rect x="10" y="30" width="20" height="10" rx="2" fill="#fff" stroke="#d32f2f" stroke-width="3"/><rect x="20" y="10" width="18" height="18" rx="3" fill="#fff" stroke="#d32f2f" stroke-width="3"/><path d="M28 28 l8 8" stroke="#d32f2f" stroke-width="3"/></svg>
+    </button>
+    <button id="lineTool" onclick="selectTool('line')" title="Reta">
+      <svg width="28" height="28" viewBox="0 0 48 48"><line x1="10" y1="38" x2="38" y2="10" stroke="#1976d2" stroke-width="5" stroke-linecap="round"/></svg>
+    </button>
+    <button id="rectTool" onclick="selectTool('rect')" title="Retângulo">
+      <svg width="28" height="28" viewBox="0 0 48 48"><rect x="10" y="14" width="28" height="20" rx="4" fill="none" stroke="#1976d2" stroke-width="4"/></svg>
+    </button>
+    <button id="circleTool" onclick="selectTool('circle')" title="Círculo">
+      <svg width="28" height="28" viewBox="0 0 48 48"><circle cx="24" cy="24" r="13" fill="none" stroke="#1976d2" stroke-width="4"/></svg>
+    </button>
+    <button id="compassTool" onclick="selectTool('compass')" title="Compasso">
+      <svg width="28" height="28" viewBox="0 0 48 48"><line x1="24" y1="6" x2="24" y2="34" stroke="#1976d2" stroke-width="4"/><line x1="15" y1="44" x2="24" y2="6" stroke="#1976d2" stroke-width="3"/><line x1="33" y1="44" x2="24" y2="6" stroke="#1976d2" stroke-width="3"/><circle cx="24" cy="6" r="3" fill="#1976d2"/></svg>
+    </button>
+    <button id="cubeTool" onclick="selectTool('cube')" title="Cubo">
+      <svg width="28" height="28" viewBox="0 0 48 48"><rect x="12" y="18" width="18" height="18" fill="none" stroke="#1976d2" stroke-width="3"/><rect x="18" y="12" width="18" height="18" fill="none" stroke="#1976d2" stroke-width="3"/><line x1="12" y1="18" x2="18" y2="12" stroke="#1976d2" stroke-width="2"/><line x1="30" y1="12" x2="30" y2="30" stroke="#1976d2" stroke-width="2"/><line x1="12" y1="36" x2="18" y2="30" stroke="#1976d2" stroke-width="2"/></svg>
+    </button>
+    <button id="paralelTool" onclick="selectTool('paralelepipedo')" title="Paralelepípedo">
+      <svg width="28" height="28" viewBox="0 0 48 48"><rect x="12" y="20" width="24" height="12" fill="none" stroke="#1976d2" stroke-width="3"/><rect x="20" y="10" width="18" height="12" fill="none" stroke="#1976d2" stroke-width="3"/><line x1="12" y1="20" x2="20" y2="10" stroke="#1976d2" stroke-width="2"/><line x1="36" y1="20" x2="38" y2="12" stroke="#1976d2" stroke-width="2"/></svg>
+    </button>
+    <button id="cylinderTool" onclick="selectTool('cylinder')" title="Cilindro">
+      <svg width="28" height="28" viewBox="0 0 48 48"><ellipse cx="24" cy="12" rx="12" ry="5" fill="none" stroke="#1976d2" stroke-width="3"/><ellipse cx="24" cy="36" rx="12" ry="5" fill="none" stroke="#1976d2" stroke-width="3"/><line x1="12" y1="12" x2="12" y2="36" stroke="#1976d2" stroke-width="3"/><line x1="36" y1="12" x2="36" y2="36" stroke="#1976d2" stroke-width="3"/></svg>
+    </button>
+    <button id="coneTool" onclick="selectTool('cone')" title="Cone">
+      <svg width="28" height="28" viewBox="0 0 48 48"><ellipse cx="24" cy="38" rx="13" ry="4" fill="none" stroke="#1976d2" stroke-width="3"/><line x1="11" y1="38" x2="24" y2="10" stroke="#1976d2" stroke-width="3"/><line x1="37" y1="38" x2="24" y2="10" stroke="#1976d2" stroke-width="3"/></svg>
+    </button>
+    <button id="pyramidTool" onclick="selectTool('pyramid')" title="Pirâmide">
+      <svg width="28" height="28" viewBox="0 0 48 48"><polygon points="10,38 24,10 38,38" fill="none" stroke="#1976d2" stroke-width="3"/><line x1="24" y1="10" x2="24" y2="38" stroke="#1976d2" stroke-width="3"/></svg>
+    </button>
+    <button id="textTool" onclick="selectTool('text')" title="Texto">
+      <svg width="28" height="28" viewBox="0 0 48 48"><text x="10" y="37" font-size="30" font-family="Arial" fill="#1976d2">T</text></svg>
+    </button>
+</div>
+
+
+        <div class="controls">
+            <button onclick="undo()">Desfazer</button>
+            <button onclick="redo()">Refazer</button>
+            <button onclick="clearBoard()">Limpar</button>
+            <button onclick="saveAsImage()">Salvar PNG</button>
+            <button onclick="exportDrawing()">Exportar</button>
+            <button onclick="document.getElementById('importFile').click()">Importar</button>
+            <input type="file" id="importFile" accept=".json">
+            <button onclick="toggleFullscreen()">Tela Cheia</button>
+        </div>
+    </div>
+    <canvas id="board"></canvas>
+</div>
+<script>
+    // Barra lateral esconde/mostra
+    function toggleSidebar() {
+        let sb = document.getElementById('sidebar');
+        let btn = document.getElementById('toggleBar');
+        sb.classList.toggle('hide');
+        btn.innerHTML = sb.classList.contains('hide') ? '&rarr;' : '&larr;';
+        setTimeout(resizeCanvas, 260); // ajusta área de desenho depois de esconder
+    }
+
+    // Canvas ajustado ao espaço livre
+    const canvas = document.getElementById('board');
+    const ctx = canvas.getContext('2d');
+    function resizeCanvas() {
+        const sb = document.getElementById('sidebar');
+        let sidebarWidth = sb.classList.contains('hide') ? 34 : sb.offsetWidth;
+        canvas.width = window.innerWidth - sidebarWidth - 6;
+        canvas.height = window.innerHeight - 8;
+        redraw();
+    }
+    window.addEventListener('resize', resizeCanvas);
+    setTimeout(resizeCanvas, 80);
+
+    // Variáveis globais e ferramentas
+    let painting = false, startX, startY, color = '#006c4c', size = 4, showGrid = false, showCartesian = false,
+        tool = 'pen', undoStack = [], redoStack = [], lastX, lastY, currentShape = null, drawingText = false,
+        compassStep = 0, compassCenter = null;
+
+    document.querySelectorAll('.quick-color').forEach(btn => {
+        btn.style.background = btn.dataset.color;
+        btn.onclick = () => {
+            document.getElementById('color').value = btn.dataset.color;
+            color = btn.dataset.color;
+            document.querySelectorAll('.quick-color').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+        }
+    });
+    document.getElementById('color').addEventListener('input', e => {
+        color = e.target.value;
+        document.querySelectorAll('.quick-color').forEach(b => b.classList.remove('selected'));
+    });
+    document.getElementById('size').addEventListener('input', e => size = e.target.value);
+    document.getElementById('grid').addEventListener('change', e => { showGrid = e.target.checked; redraw(); });
+    document.getElementById('cartesian').addEventListener('change', e => { showCartesian = e.target.checked; redraw(); });
+    document.getElementById('importFile').addEventListener('change', importDrawing);
+
+    function selectTool(selected) {
+        tool = selected;
+        document.querySelectorAll('.tools button').forEach(btn => btn.classList.remove('selected'));
+        document.getElementById(selected + 'Tool').classList.add('selected');
+        if(selected !== 'compass') compassStep = 0;
+    }
+    function getPointer(e, isTouch) {
+        let rect = canvas.getBoundingClientRect();
+        if (isTouch && e.touches) {
+            return { x: (e.touches[0].clientX - rect.left),
+                     y: (e.touches[0].clientY - rect.top)};
+        } else if(e.offsetX !== undefined) {
+            return { x: e.offsetX, y: e.offsetY };
+        } else {
+            return { x: 0, y: 0 };
+        }
+    }
+    canvas.addEventListener('mousedown', e => startAction(e));
+    canvas.addEventListener('mouseup', e => endAction(e));
+    canvas.addEventListener('mousemove', e => moveAction(e));
+    canvas.addEventListener('touchstart', e => startAction(e, true));
+    canvas.addEventListener('touchend', e => endAction(e, true));
+    canvas.addEventListener('touchmove', e => moveAction(e, true));
+
+    function startAction(e, isTouch) {
+        if (drawingText) return;
+        painting = true;
+        const p = getPointer(e, isTouch);
+        startX = lastX = p.x; startY = lastY = p.y;
+        if (tool === 'pen') {
+            ctx.beginPath(); ctx.moveTo(startX, startY);
+        } else if (tool === 'eraser') {
+            eraseAt(p.x, p.y);
+        } else if (tool === 'text') {
+            painting = false; drawingText = true;
+            const texto = prompt('Digite o texto:');
+            if (texto) {
+                saveState();
+                ctx.save();
+                ctx.font = `${Math.max(size*4, 18)}px Segoe UI, Arial`;
+                ctx.fillStyle = color;
+                ctx.textBaseline = "top";
+                ctx.fillText(texto, p.x, p.y);
+                ctx.restore();
+                saveState();
+            }
+            drawingText = false;
+        } else if (tool === 'compass') {
+            if (compassStep === 0) {
+                compassCenter = { x: p.x, y: p.y };
+                compassStep = 1; showTempPoint(p.x, p.y, 'red'); painting = false;
+            } else if (compassStep === 1) {
+                saveState();
+                let r = Math.hypot(p.x - compassCenter.x, p.y - compassCenter.y);
+                ctx.save();
+                ctx.strokeStyle = color; ctx.lineWidth = size;
+                ctx.beginPath(); ctx.arc(compassCenter.x, compassCenter.y, r, 0, 2 * Math.PI); ctx.stroke();
+                ctx.restore();
+                compassStep = 0;
+                saveState();
+                redraw();
+            }
+        } else if (['cube','paralelepipedo','cylinder','cone','pyramid'].includes(tool)) {
+            currentShape = { x0: p.x, y0: p.y, x1: p.x, y1: p.y };
+        } else {
+            currentShape = { x0: startX, y0: startY, x1: startX, y1: startY };
+        }
+    }
+    function endAction(e, isTouch) {
+        if (!painting) return;
+        painting = false;
+        if (tool === 'eraser') return;
+        if (tool !== 'pen' && currentShape) {
+            const p = getPointer(e, isTouch);
+            currentShape.x1 = p.x; currentShape.y1 = p.y;
+            saveState();
+            if (tool === 'line' || tool === 'rect' || tool === 'circle') {
+                drawShape(currentShape, tool, true);
+            } else if (tool === 'cube') {
+                drawCube(currentShape);
+            } else if (tool === 'paralelepipedo') {
+                drawParalelepipedo(currentShape);
+            } else if (tool === 'cylinder') {
+                drawCylinder(currentShape);
+            } else if (tool === 'cone') {
+                drawCone(currentShape);
+            } else if (tool === 'pyramid') {
+                drawPyramid(currentShape);
+            }
+            currentShape = null;
+            saveState();
+        } else if (tool === 'pen') {
+            ctx.lineTo(lastX, lastY); ctx.stroke(); ctx.beginPath(); saveState();
+        }
+    }
+    function moveAction(e, isTouch) {
+        if (!painting) return;
+        const p = getPointer(e, isTouch);
+        if (tool === 'pen') {
+            ctx.lineWidth = size; ctx.strokeStyle = color;
+            ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+            ctx.lineTo(p.x, p.y); ctx.stroke();
+            lastX = p.x; lastY = p.y;
+        } else if (tool === 'eraser') {
+            eraseAt(p.x, p.y);
+        } else if (['line', 'rect', 'circle', 'cube', 'paralelepipedo', 'cylinder', 'cone', 'pyramid'].includes(tool) && currentShape) {
+            currentShape.x1 = p.x; currentShape.y1 = p.y;
+            redraw();
+            if (tool === 'cube') drawCube(currentShape, false);
+            else if (tool === 'paralelepipedo') drawParalelepipedo(currentShape, false);
+            else if (tool === 'cylinder') drawCylinder(currentShape, false);
+            else if (tool === 'cone') drawCone(currentShape, false);
+            else if (tool === 'pyramid') drawPyramid(currentShape, false);
+            else drawShape(currentShape, tool, false);
+        }
+    }
+    function eraseAt(x, y) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.beginPath();
+        ctx.arc(x, y, size*1.2, 0, Math.PI*2, false);
+        ctx.fill();
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.restore();
+    }
+    function drawShape(shape, type, apply) {
+        ctx.save();
+        ctx.lineWidth = size; ctx.strokeStyle = color; ctx.fillStyle = color+'55'; ctx.lineCap = 'round';
+        if (type === 'line') {
+            ctx.beginPath(); ctx.moveTo(shape.x0, shape.y0); ctx.lineTo(shape.x1, shape.y1); ctx.stroke();
+        } else if (type === 'rect') {
+            let w = shape.x1-shape.x0, h = shape.y1-shape.y0;
+            ctx.beginPath(); ctx.rect(shape.x0, shape.y0, w, h); ctx.stroke();
+        } else if (type === 'circle') {
+            let r = Math.hypot(shape.x1-shape.x0, shape.y1-shape.y0);
+            ctx.beginPath(); ctx.arc(shape.x0, shape.y0, r, 0, 2 * Math.PI); ctx.stroke();
+        }
+        ctx.restore();
+        if (apply) saveState();
+    }
+    function drawCube(shape, apply=true) {
+        ctx.save();
+        ctx.strokeStyle = color; ctx.lineWidth = size;
+        let x = shape.x0, y = shape.y0, w = (shape.x1-shape.x0), h = (shape.y1-shape.y0), d = Math.min(Math.abs(w),Math.abs(h))/2.5;
+        ctx.strokeRect(x, y, w, h);
+        ctx.strokeRect(x+d, y-d, w, h);
+        ctx.beginPath();
+        ctx.moveTo(x, y); ctx.lineTo(x+d, y-d);
+        ctx.moveTo(x+w, y); ctx.lineTo(x+w+d, y-d);
+        ctx.moveTo(x, y+h); ctx.lineTo(x+d, y+h-d);
+        ctx.moveTo(x+w, y+h); ctx.lineTo(x+w+d, y+h-d);
+        ctx.stroke();
+        ctx.setLineDash([6, 4]);
+        ctx.beginPath();
+        ctx.moveTo(x+w+d, y-d); ctx.lineTo(x+d, y-d);
+        ctx.moveTo(x+w+d, y+h-d); ctx.lineTo(x+d, y+h-d);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+        if (apply) saveState();
+    }
+    function drawParalelepipedo(shape, apply=true) {
+        ctx.save();
+        ctx.strokeStyle = color; ctx.lineWidth = size;
+        let x = shape.x0, y = shape.y0, w = shape.x1-shape.x0, h = shape.y1-shape.y0, d = Math.abs(w)/2.3;
+        ctx.strokeRect(x, y, w, h);
+        ctx.strokeRect(x+d, y-d, w, h);
+        ctx.beginPath();
+        ctx.moveTo(x, y); ctx.lineTo(x+d, y-d);
+        ctx.moveTo(x+w, y); ctx.lineTo(x+w+d, y-d);
+        ctx.moveTo(x, y+h); ctx.lineTo(x+d, y+h-d);
+        ctx.moveTo(x+w, y+h); ctx.lineTo(x+w+d, y+h-d);
+        ctx.stroke();
+        ctx.restore();
+        if (apply) saveState();
+    }
+    function drawCylinder(shape, apply=true) {
+        ctx.save();
+        ctx.strokeStyle = color; ctx.lineWidth = size;
+        let x = shape.x0, y = shape.y0, w = shape.x1-shape.x0, h = shape.y1-shape.y0;
+        let rx = Math.abs(w)/2, ry = Math.abs(h)/7, cx = x + w/2, topy = y, boty = y+h;
+        ctx.beginPath(); ctx.ellipse(cx, topy, rx, ry, 0, 0, 2*Math.PI); ctx.stroke();
+        ctx.setLineDash([7,6]);
+        ctx.beginPath(); ctx.ellipse(cx, boty, rx, ry, 0, 0, 2*Math.PI); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.moveTo(x, topy); ctx.lineTo(x, boty);
+        ctx.moveTo(x+w, topy); ctx.lineTo(x+w, boty);
+        ctx.stroke();
+        ctx.restore();
+        if (apply) saveState();
+    }
+    function drawCone(shape, apply=true) {
+        ctx.save();
+        ctx.strokeStyle = color; ctx.lineWidth = size;
+        let x = shape.x0, y = shape.y0, w = shape.x1-shape.x0, h = shape.y1-shape.y0;
+        let cx = x + w/2, topy = y, boty = y+h, rx = Math.abs(w)/2, ry = Math.abs(h)/6;
+        ctx.beginPath();
+        ctx.moveTo(cx, topy); ctx.lineTo(x, boty);
+        ctx.moveTo(cx, topy); ctx.lineTo(x+w, boty);
+        ctx.moveTo(x, boty); ctx.ellipse(cx, boty, rx, ry, 0, 0, 2*Math.PI);
+        ctx.stroke();
+        ctx.restore();
+        if (apply) saveState();
+    }
+    function drawPyramid(shape, apply=true) {
+        ctx.save();
+        ctx.strokeStyle = color; ctx.lineWidth = size;
+        let x = shape.x0, y = shape.y0, w = shape.x1-shape.x0, h = shape.y1-shape.y0;
+        let cx = x + w/2, topy = y, boty = y+h;
+        ctx.beginPath();
+        ctx.rect(x, boty-h*0.2, w, h*0.2);
+        ctx.moveTo(cx, topy);
+        ctx.lineTo(x, boty-h*0.2);
+        ctx.moveTo(cx, topy);
+        ctx.lineTo(x+w, boty-h*0.2);
+        ctx.moveTo(cx, topy);
+        ctx.lineTo(x, boty);
+        ctx.moveTo(cx, topy);
+        ctx.lineTo(x+w, boty);
+        ctx.moveTo(x, boty-h*0.2); ctx.lineTo(x, boty);
+        ctx.moveTo(x+w, boty-h*0.2); ctx.lineTo(x+w, boty);
+        ctx.stroke();
+        ctx.restore();
+        if (apply) saveState();
+    }
+    function showTempPoint(x, y, colorDot) {
+        redraw();
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(x, y, 6, 0, 2 * Math.PI);
+        ctx.fillStyle = colorDot; ctx.fill();
+        ctx.restore();
+    }
+    function redraw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (showGrid) drawGrid();
+        if (showCartesian) drawCartesian();
+        let img = new Image();
+        if (undoStack.length > 0) {
+            img.src = undoStack[undoStack.length - 1];
+            img.onload = () => { ctx.drawImage(img, 0, 0); };
+        }
+    }
+    function drawGrid() {
+        ctx.save();
+        ctx.strokeStyle = '#e0e0e0'; ctx.lineWidth = 1;
+        for (let x = 50; x < canvas.width; x += 50) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke(); }
+        for (let y = 50; y < canvas.height; y += 50) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke(); }
+        ctx.restore();
+    }
+    function drawCartesian() {
+        ctx.save();
+        ctx.strokeStyle = "#444"; ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.moveTo(canvas.width/2, 0); ctx.lineTo(canvas.width/2, canvas.height);
+        ctx.moveTo(0, canvas.height/2); ctx.lineTo(canvas.width, canvas.height/2);
+        ctx.stroke();
+        ctx.font = "11px Arial"; ctx.fillStyle = "#444";
+        for(let x=canvas.width/2+50,i=1; x<canvas.width; x+=50,i++) {
+            ctx.beginPath(); ctx.moveTo(x, canvas.height/2-6); ctx.lineTo(x, canvas.height/2+6); ctx.stroke();
+            ctx.fillText("+"+i, x-6, canvas.height/2+20);
+        }
+        for(let x=canvas.width/2-50,i=1; x>0; x-=50,i++) {
+            ctx.beginPath(); ctx.moveTo(x, canvas.height/2-6); ctx.lineTo(x, canvas.height/2+6); ctx.stroke();
+            ctx.fillText("-"+i, x-14, canvas.height/2+20);
+        }
+        for(let y=canvas.height/2+50,j=1; y<canvas.height; y+=50,j++) {
+            ctx.beginPath(); ctx.moveTo(canvas.width/2-6, y); ctx.lineTo(canvas.width/2+6, y); ctx.stroke();
+            ctx.fillText("-"+j, canvas.width/2+10, y+4);
+        }
+        for(let y=canvas.height/2-50,j=1; y>0; y-=50,j++) {
+            ctx.beginPath(); ctx.moveTo(canvas.width/2-6, y); ctx.lineTo(canvas.width/2+6, y); ctx.stroke();
+            ctx.fillText("+"+j, canvas.width/2+10, y+4);
+        }
+        ctx.font = "bold 12px Arial";
+        ctx.fillText("0", canvas.width/2+8, canvas.height/2+18);
+        ctx.restore();
+    }
+    function saveState() { if (undoStack.length > 30) undoStack.shift(); undoStack.push(canvas.toDataURL()); redoStack = []; }
+    function undo() {
+        if (undoStack.length < 2) return;
+        redoStack.push(undoStack.pop());
+        let img = new Image();
+        img.src = undoStack[undoStack.length - 1];
+        img.onload = () => { ctx.clearRect(0, 0, canvas.width, canvas.height); if (showGrid) drawGrid(); if (showCartesian) drawCartesian(); ctx.drawImage(img, 0, 0); }
+    }
+    function redo() {
+        if (redoStack.length === 0) return;
+        let imgData = redoStack.pop();
+        undoStack.push(imgData);
+        let img = new Image();
+        img.src = imgData;
+        img.onload = () => { ctx.clearRect(0, 0, canvas.width, canvas.height); if (showGrid) drawGrid(); if (showCartesian) drawCartesian(); ctx.drawImage(img, 0, 0); }
+    }
+    function clearBoard() { saveState(); ctx.clearRect(0, 0, canvas.width, canvas.height); if (showGrid) drawGrid(); if (showCartesian) drawCartesian(); saveState(); }
+    function saveAsImage() {
+        const link = document.createElement('a');
+        link.download = 'quadro-branco.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    }
+    function exportDrawing() {
+        const data = { img: canvas.toDataURL(), grid: showGrid, cartesian: showCartesian };
+        const a = document.createElement('a');
+        a.download = 'quadro-branco.json';
+        a.href = 'data:application/json;base64,' + btoa(JSON.stringify(data));
+        a.click();
+    }
+    function importDrawing(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+            let content = evt.target.result;
+            try {
+                let data = JSON.parse(content);
+                let img = new Image();
+                img.onload = function() {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    showGrid = data.grid;
+                    showCartesian = data.cartesian || false;
+                    document.getElementById('grid').checked = showGrid;
+                    document.getElementById('cartesian').checked = showCartesian;
+                    if (showGrid) drawGrid();
+                    if (showCartesian) drawCartesian();
+                    ctx.drawImage(img, 0, 0);
+                    saveState();
+                }
+                img.src = data.img;
+            } catch { alert('Arquivo inválido!'); }
+        };
+        reader.readAsText(file);
+    }
+    function toggleFullscreen() {
+        if (!document.fullscreenElement) {
+            (canvas.requestFullscreen || canvas.webkitRequestFullscreen || canvas.msRequestFullscreen).call(canvas);
+        } else {
+            (document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen).call(document);
+        }
+    }
+    window.onload = function() { saveState(); resizeCanvas(); };
+</script>
+</body>
+</html>
